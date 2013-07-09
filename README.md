@@ -1,6 +1,6 @@
 # aclass
 
-A (very) small wrapper over JavaScript's prototype system. AMD support is included.
+A small wrapper over JavaScript's prototype system that eases the creation of classes. AMD support is included.
 
 ```JavaScript
 var FourLeggedThing = aclass(function (noise) {
@@ -58,13 +58,52 @@ Cat.init = function () { ... };
 
 Creates a new instance of ```Class```. Arguments to ```instance()``` are passed to the ```init()``` method, if one exists.
 
-#### instance.isa(Class)
+#### classOrInstance1.isa(classOrInstance2)
 
-Returns ```true``` if ```Class``` is somewhere in the prototype chain of ```instance```, ```false``` otherwise.
+Convenience function equivalent to:
 
-#### Class1.isa(Class2)
+```JavaScript
+classOrInstance1 instanceof classOrInstance2.constructor;
+```
 
-Returns ```true``` if ```Class2``` is somewhere in the prototype chain of ```Class1```, ```false``` otherwise.
+## method modifiers
+
+An alternate API is available for augmenting methods, inspired by Moose's [method modifiers](http://search.cpan.org/dist/Moose/lib/Moose/Manual/MethodModifiers.pod).
+
+#### classOrInstance.before(methodName, func)
+#### classOrInstance.after(methodName, func)
+
+Replaces ```classOrInstance[methodName]``` with a function than runs the original method, as well as ```func```. With ```.before()```, ```func``` runs first. With ```.after()```, it runs second.
+
+Return values from the original method and ```func``` are ignored.
+
+If ```methodName``` is a direct property of ```classOrInstance```, this overwrites the original method on that object. If ```methodName``` is somewhere in the prototype chain of classOrInstance, the new method delegates calls to the parent method, as expected.
+
+#### classOrInstance.around(methodName, func)
+
+Replaces ```classOrInstance[methodName]``` with function ```func```, which recieves the original method as its first argument. This is useful if:
+
+ * You care about the return values of any of the methods.
+ * You have complex code that you want to run before *and* after the original method.
+ * You may not want to run the original method at all.
+
+Example:
+
+```JavaScript
+var A = aclass(function (prop) {
+    this.prop = prop;
+});
+
+var B = aclass(A);
+
+B.around("init", function (orig, prop) {
+    orig(prop * 10);
+});
+
+var b = B.instance(10);
+
+b.prop === 100;
+```
 
 ## thoughts
 
@@ -76,7 +115,9 @@ I had three main motivations for writing this:
 
 I also dislike the syntax that other class systems use. Passing a dictionary of methods requires too much indentation.
 
-The ```__super__``` attribute isn't something I'd use, personally. I added it because it was a single line of code. I would recommend only accessing it using ```Class.__super__``` and not ```this.__super__```. The latter can lead to unexpected results when you have a class heirarchy of more than two levels, because the value is only ever dependent on ```this```, not the method you happen to be in.
+The object returned from ```aclass()``` isn't a constructor, and can't be called with ```new```. In fact, it's actually the prototype of the constructor. The examples above conflict with certain guidelines suggesting to only capitalize constructor functions. This is a minor point to be aware of, but doesn't have any effect if you know what you're doing.
+
+I recommend only accessing ```__super__``` using ```Class.__super__``` and not ```this.__super__```. The latter can lead to unexpected results when you have a class heirarchy of more than two levels, because the value is only ever dependent on ```this```, not the method you happen to be in.
 
 If I could get away with it, I'd rename ```instance()``` to ```new()```. It would work in most cases, but would break inside a ```with``` statement.
 
