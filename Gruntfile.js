@@ -30,8 +30,7 @@ module.exports = function (grunt) {
     },
     uglify: {
       options: {
-        banner: "// <%= pkg.name %> <%= pkg.version %>\n" +
-                "// https://github.com/mwiencek/aclass\n" +
+        banner: "// <%= pkg.name %> <%= pkg.version %> (https://github.com/mwiencek/aclass)\n" +
                 "// License: MIT (http://opensource.org/licenses/MIT)\n",
         mangle: true,
         compress: true,

@@ -1,98 +1,228 @@
-describe("aclass test suite", function () {
+describe("classes", function () {
 
-    it("supports subclassing", function () {
-        var A = aclass(function (prop) {
-            this.prop = prop;
-        });
-
-        A.sharedMethod = function () {
-            return this.prop;
-        };
-
-        A.squared = function () {
-            return this.prop * this.prop;
-        };
-
+    it("can pass a BaseClass as the first argument to aclass()", function () {
+        var A = aclass();
         var B = aclass(A);
 
-        B.doubleit = function () {
-            return A.squared.call(this) * 2;
-        };
+        var a = new A();
+        var b = new B();
 
-        var a = A.instance(1),
-            b = B.instance(2);
-
-        expect(a.prop).toBe(1);
-        expect(b.prop).toBe(2);
-        expect(a.sharedMethod).toBe(b.sharedMethod);
-        expect(b.doubleit()).toBe(8);
-        expect(b.isa(A)).toBe(true);
-        expect(b.isa(B)).toBe(true);
-        expect(a.isa(A)).toBe(true);
-        expect(a.isa(B)).toBe(false);
-        expect(A.isa(B)).toBe(false);
-        expect(B.isa(A)).toBe(true);
+        expect(a instanceof A).toBe(true);
+        expect(a instanceof B).toBe(false);
+        expect(b instanceof A).toBe(true);
+        expect(b instanceof B).toBe(true);
     });
 
-    it("supports method modifiers", function () {
-        var A = aclass(function (prop) {
-            this.prop = prop * 2;
+    it("can call extend() on an existing class", function () {
+        var A = aclass();
+        var B = A.extend();
+
+        var a = new A();
+        var b = new B();
+
+        expect(a instanceof A).toBe(true);
+        expect(a instanceof B).toBe(false);
+        expect(b instanceof A).toBe(true);
+        expect(b instanceof B).toBe(true);
+    });
+
+    it("can inherit properties from a BaseClass", function () {
+        var A = aclass({
+            property: { value: 577 },
+            method: function () {
+                return true;
+            }
         });
-
-        A.after("init", function (prop) {
-            this.prop *= (prop + 1);
-        });
-
-        var a = A.instance(3);
-
-        expect(a.prop).toBe(24);
-
-        A.before("init", function (prop) {
-            this.eleven = (prop === 11);
-        });
-
-        a = A.instance(11);
-
-        expect(a.eleven).toBe(true);
-        expect(a.prop).toBe(264);
 
         var B = aclass(A);
 
-        B.around("init", function (orig, prop) {
-            orig(prop * 5);
+        var a = new A();
+        var b = new B();
+
+        expect(a.property.value).toEqual(577);
+        expect(a.property).toBe(b.property);
+
+        expect(a.method()).toBe(true);
+        expect(a.method).toBe(b.method);
+    });
+
+    it("can override methods", function () {
+        var A = aclass({
+            method: function () {
+                return true;
+            }
         });
 
-        var b = B.instance(13);
+        var B = aclass(A, {
+            method: function () {
+                return false;
+            }
+        });
 
-        expect(b.prop).toBe(8580);
-        expect(b.eleven).toBe(false);
+        var a = new A();
+        var b = new B();
 
-        A.init = function (prop) {
-            this.prop = prop;
+        expect(a.method()).toBe(true);
+        expect(b.method()).toBe(false);
+    });
+
+    it("can set properties via the class prototype", function () {
+        var A = aclass();
+
+        A.prototype.method = function () {
+            return true;
         };
 
-        b = B.instance(11);
+        var a = new A();
 
-        expect(b.prop).toBe(55);
-        expect(b.eleven).toBeUndefined();
+        expect(a.method()).toBe(true);
+    });
 
-        // Also test modifiers on instances
-        b.before("init", function () {
+    it("can provide an init() method for the constructor", function () {
+        function init(prop) {
+            this.property = prop;
+        }
+
+        var A = aclass(init);
+        var a = new A(577);
+
+        expect(a.init).toBe(init);
+        expect(a.property).toBe(577);
+    });
+});
+
+describe("method modifiers", function () {
+
+    function setProp(prop) {
+        this.property = prop;
+        return prop;
+    }
+
+    it("can use method modifiers on a class", function () {
+        var A = aclass(setProp);
+
+        A.before("init", function () {
             this.inb4 = true;
         });
 
-        b.after("init", function () {
+        A.after("init", function () {
             this.inafter = true;
         });
 
-        b.around("init", function (orig, prop) {
+        A.around("init", function (orig, prop) {
+            orig(prop * 10);
+        });
+
+        var a = new A(577);
+
+        expect(a.inb4).toBe(true);
+        expect(a.inafter).toBe(true);
+        expect(a.property).toBe(5770);
+    });
+
+    it("can use method modifiers on an instance", function () {
+        var A = aclass({ setProp: setProp });
+        var a = new A();
+
+        a.around("setProp", function (orig, prop) {
             return orig(prop * 10);
         });
 
-        b.init(11);
+        // make sure it only changed on the instance
+        expect(A.prototype.setProp).toBe(setProp);
 
-        expect(b.prop).toBe(550);
+        var result = a.setProp(577);
+
+        expect(a.property).toBe(5770);
+        expect(result).toBe(5770);
+    });
+
+    it("can use method modifiers with an inherited method", function () {
+        var A = aclass({ setProp: setProp });
+        var B = A.extend();
+
+        B.around("setProp", function (orig, prop) {
+            return orig(prop * 5);
+        });
+
+        expect(A.prototype.setProp).toBe(setProp);
+
+        var b = new B();
+
+        expect(b.setProp(5)).toBe(25);
+
+        A.prototype.setProp = function (prop) {
+            this.property = prop * 4;
+            return this.property;
+        };
+
+        expect(b.setProp(5)).toBe(100);
+    });
+
+    it("can use the dollar-sign syntax", function () {
+        var A = aclass({
+            init: setProp,
+            methodA: function (a) {
+                this.a = a;
+            },
+            methodB: function (b) {
+                this.b = b;
+            }
+        });
+
+        var B = A.extend({
+            around$init: function (supr, prop) {
+                supr(prop + 1);
+            },
+            before$methodA: function () {
+                this.inb4 = true;
+            },
+            after$methodB: function () {
+                this.inafter = true;
+            }
+        });
+
+        var b = new B(100);
+
+        expect(b.property).toBe(101);
+
+        b.methodA(7);
+        b.methodB(13);
+
         expect(b.inb4).toBe(true);
+        expect(b.a).toBe(7);
+
         expect(b.inafter).toBe(true);
+        expect(b.b).toBe(13);
+    });
+
+    it("can create custom method modifiers", function () {
+        aclass.methodModifier("countCalls", function (orig, callback) {
+            return function () {
+                this.count += 1;
+                callback.call(this, this.count);
+                return orig.call(this);
+            };
+        });
+
+        var A = aclass({
+            count: 0,
+            inc: function () {
+                return this.count;
+            }
+        });
+
+        A.countCalls("inc", function (count) {
+            if (count === 3) {
+                this.three = true;
+            }
+        });
+
+        var a = new A();
+
+        expect(a.inc()).toBe(1);
+        expect(a.inc()).toBe(2);
+        expect(a.inc()).toBe(3);
+        expect(a.three).toBe(true);
     });
 });

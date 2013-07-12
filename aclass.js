@@ -11,30 +11,22 @@
 }(this, function () {
     "use strict";
 
-    var protoProp = "prototype",
+    var baseProto = {},
+        protoProp = "prototype",
         constProp = "constructor",
-        superProp = "__super__";
+        superProp = "__proto__",
+        methodModifier = /^(\w+)\$(\w+)$/;
 
-    function BaseClass() {}
-    var baseProto = BaseClass[protoProp];
-
-    baseProto.isa = function (object) {
-        return this instanceof object[constProp];
-    };
-
-    baseProto.instance = function () {
-        var instance = new this[constProp](),
-            init = instance.init;
-        if (init !== undefined) {
-            init.apply(instance, arguments);
-        }
-        return instance;
-    };
-
-    function bind(func, object) {
+    function bound(func, object) {
         return function () {
             return func.apply(object, arguments);
         };
+    }
+
+    function setSuper(object, proto) {
+        if (object[superProp] === undefined) {
+            object[superProp] = proto;
+        }
     }
 
     function sequence(before, after) {
@@ -44,63 +36,113 @@
         };
     }
 
-    function getFunctionOrDelegate(object, name) {
-        if (object.hasOwnProperty(name)) {
-            return object[name];
-
-        } else {
-            // Delegate calls to the parent prototype.
-            object = object.hasOwnProperty(superProp) ?
-                     object[superProp] : object[constProp][protoProp];
-
-            return function () {
-                return object[name].apply(this, arguments);
-            };
-        }
+    function aFunction(object) {
+        return typeof object === "function";
     }
 
-    baseProto.before = function (name, before) {
-        this[name] = sequence(before, getFunctionOrDelegate(this, name));
+    var methodModifiers = {
+        before: function (orig, func) {
+            return sequence(func, orig);
+        },
+
+        after: function (orig, func) {
+            return sequence(orig, func);
+        },
+
+        around: function (orig, func) {
+            return function () {
+                var args = [bound(orig, this)];
+                args.push.apply(args, arguments);
+                return func.apply(this, args);
+            };
+        }
     };
 
-    baseProto.after = function (name, after) {
-        this[name] = sequence(getFunctionOrDelegate(this, name), after);
-    };
+    function aclass(arg0, arg1) {
+        var supr, proto, properties;
 
-    baseProto.around = function (name, func) {
-        var orig = getFunctionOrDelegate(this, name);
+        if (aFunction(arg0) && baseProto.isPrototypeOf(arg0[protoProp])) {
+            supr = arg0[protoProp];
+        } else {
+            supr = baseProto;
+            arg1 = arg0;
+        }
+        properties = aFunction(arg1) ? { init: arg1 } : arg1;
 
-        this[name] = function () {
-            var args = [bind(orig, this)];
-            args.push.apply(args, arguments);
+        function Prototype() {}
+        Prototype[protoProp] = supr;
+        proto = new Prototype();
+        setSuper(proto, supr);
 
-            return func.apply(this, args);
+        function Class() {
+            var self = this;
+
+            if (self instanceof Class === false) {
+                self = new Class();
+            }
+            setSuper(self, proto);
+
+            if (aFunction(self.init)) {
+                self.init.apply(self, arguments);
+            }
+            return self;
+        }
+
+        proto[constProp] = Class;
+        Class[protoProp] = proto;
+
+        for (key in properties) {
+            if (proto.hasOwnProperty(key)) {
+                continue;
+            }
+            var value = properties[key];
+
+            if (aFunction(value) && methodModifier.test(key)) {
+                var match = key.match(methodModifier),
+                    modifier = methodModifiers[match[1]];
+
+                key = match[2];
+                value = modifyMethod(properties, proto, key, value, modifier);
+            }
+            proto[key] = value;
+        }
+
+        for (key in baseProto) {
+            Class[key] = bound(baseProto[key], proto);
+        }
+
+        Class.extend = function (properties) {
+            return aclass(Class, properties);
+        };
+
+        return Class;
+    }
+
+    function modifyMethod(source, target, name, value, modifier) {
+        var orig;
+        if (source.hasOwnProperty(name)) {
+            orig = source[name];
+        } else {
+            var supr = target[superProp];
+
+            orig = function () {
+                return supr[name].apply(this, arguments);
+            };
+        }
+        return modifier.call(target, orig, value);
+    }
+
+    aclass.methodModifier = function (modifierName, modifier) {
+        methodModifiers[modifierName] = modifier;
+
+        baseProto[modifierName] = function (name, func) {
+            this[name] = modifyMethod(this, this, name, func, modifier);
         };
     };
 
-    return function (arg0, arg1) {
-        var superProto = baseProto, init;
+    for (var key in methodModifiers) {
+        aclass.methodModifier(key, methodModifiers[key]);
+    }
 
-        if (typeof arg0 === "function") {
-            init = arg0;
-
-        } else if (arg0 !== undefined) {
-            superProto = arg0;
-
-            if (arg1 !== undefined) {
-                init = arg1;
-            }
-        }
-
-        function Class() {}
-        var proto = Class[protoProp] = new superProto[constProp]();
-        proto[superProp] = superProto;
-        proto[constProp] = Class;
-
-        if (init !== undefined) {
-            proto.init = init;
-        }
-
-        return proto;
-    };
+    return aclass;
 }));
