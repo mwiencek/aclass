@@ -11,8 +11,7 @@
 }(this, function () {
     "use strict";
 
-    var baseProto = {},
-        protoProp = "prototype",
+    var protoProp = "prototype",
         constProp = "constructor",
         superProp = "__super__",
         boundProp = "__bound__",
@@ -67,10 +66,31 @@
         }
     };
 
+    var baseProto = {
+        extend: function (properties) {
+            for (var key in properties) {
+                if (this.hasOwnProperty(key)) {
+                    continue;
+                }
+                var value = properties[key];
+
+                if (aFunction(value) && methodModifier.test(key)) {
+                    var match = key.match(methodModifier),
+                        modifier = methodModifiers[match[1]];
+
+                    key = match[2];
+                    value = modifyMethod(properties, this,
+                                         key, value, modifier);
+                }
+                this[key] = value;
+            }
+        }
+    };
+
     function Prototype() {}
 
     function aclass(arg0, arg1) {
-        var supr, proto, properties;
+        var supr, proto;
 
         if (aFunction(arg0) && baseProto.isPrototypeOf(arg0[protoProp])) {
             supr = arg0[protoProp];
@@ -78,11 +98,14 @@
             supr = baseProto;
             arg1 = arg0;
         }
-        properties = aFunction(arg1) ? { init: arg1 } : arg1;
 
         Prototype[protoProp] = supr;
         proto = new Prototype();
         proto[superProp] = supr;
+
+        if (arg1 !== undefined) {
+            proto.extend(aFunction(arg1) ? { init: arg1 } : arg1);
+        }
 
         function Class() {
             var self = this;
@@ -101,29 +124,9 @@
         proto[constProp] = Class;
         Class[protoProp] = proto;
 
-        for (key in properties) {
-            if (proto.hasOwnProperty(key)) {
-                continue;
-            }
-            var value = properties[key];
-
-            if (aFunction(value) && methodModifier.test(key)) {
-                var match = key.match(methodModifier),
-                    modifier = methodModifiers[match[1]];
-
-                key = match[2];
-                value = modifyMethod(properties, proto, key, value, modifier);
-            }
-            proto[key] = value;
-        }
-
         for (key in baseProto) {
             Class[key] = delegate(baseProto, key, proto);
         }
-
-        Class.extend = function (properties) {
-            return aclass(Class, properties);
-        };
 
         return Class;
     }

@@ -13,17 +13,32 @@ describe("classes", function () {
         expect(b instanceof B).toBe(true);
     });
 
-    it("can call extend() on an existing class", function () {
+    it("can call extend() on an existing class or instance", function () {
         var A = aclass();
-        var B = A.extend();
 
-        var a = new A();
-        var b = new B();
+        A.extend({
+            init: function (num) {
+                this.number = num;
+            },
+            setNumber: function (num) {
+                this.init(num);
+            }
+        });
 
-        expect(a instanceof A).toBe(true);
-        expect(a instanceof B).toBe(false);
-        expect(b instanceof A).toBe(true);
-        expect(b instanceof B).toBe(true);
+        var a = new A(1337);
+        expect(a.number).toBe(1337);
+
+        a.setNumber(0);
+        expect(a.number).toBe(0);
+
+        a.extend({
+            setNumber: function (num) {
+                this.__super__.setNumber.call(this, num * 2);
+            }
+        });
+
+        a.setNumber(668.5);
+        expect(a.number).toBe(1337);
     });
 
     it("can inherit properties from a BaseClass", function () {
@@ -139,7 +154,7 @@ describe("method modifiers", function () {
 
     it("can use method modifiers with an inherited method", function () {
         var A = aclass({ setProp: setProp });
-        var B = A.extend();
+        var B = aclass(A);
 
         B.around("setProp", function (orig, prop) {
             return orig(prop * 5);
@@ -170,7 +185,7 @@ describe("method modifiers", function () {
             }
         });
 
-        var B = A.extend({
+        var B = aclass(A, {
             around$init: function (supr, prop) {
                 supr(prop + 1);
             },
