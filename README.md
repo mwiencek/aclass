@@ -18,7 +18,7 @@ var FourLeggedThing = aclass({
     }
 });
 
-var Cat = aclass(FourLeggedThing, { // or FourLeggedThing.extend({ ...
+var Cat = aclass(FourLeggedThing, {
 
     around$init: function (supr) {
         supr("meow");
@@ -47,6 +47,30 @@ Returns a new class.
 ```BaseClass``` is optional. If supplied, it must have been previously created with ```aclass()```.
 
 The second argument (or first, if ```BaseClass``` is not supplied), is either an ```init()``` function, or an object whose properties will be copied to the new class's prototype. The ```init``` function is automatically run whenever you create a new instance. You can supply an ```init``` in ```properties```, too; the former syntax is simply a convenience for when the class has no other methods.
+
+#### classOrInstance.extend(properties)
+
+Extends the existing ```classOrInstance``` with values from ```properties```.
+
+```JavaScript
+var Cat = aclass();
+
+Cat.extend({
+    meow: function () {
+        alert("meow");
+    }
+});
+
+var angryCat = new Cat();
+
+angryCat.extend({
+    // see "method modifiers" below to understand the $-syntax
+
+    after$meow: function () {
+        this.attack();
+    }
+});
+```
 
 ## method modifiers
 
@@ -96,7 +120,7 @@ b.setProp(10) === 100;
 Method modifiers can be called during class creation:
 
 ```JavaScript
-var Cat = FourLeggedThing.extend({
+var Cat = aclass(FourLeggedThing, {
 
     // delegates to FourLeggedThing.prototype.init
     around$init: function (supr) {
