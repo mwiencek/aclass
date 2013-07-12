@@ -14,19 +14,24 @@
     var baseProto = {},
         protoProp = "prototype",
         constProp = "constructor",
-        superProp = "__proto__",
+        superProp = "__super__",
+        boundProp = "__bound__",
         methodModifier = /^(\w+)\$(\w+)$/;
 
     function bound(func, object) {
-        return function () {
-            return func.apply(object, arguments);
-        };
+        function boundFunc() {
+            return func.apply(boundFunc[boundProp] || this, arguments);
+        }
+        boundFunc[boundProp] = object;
+        return boundFunc;
     }
 
-    function setSuper(object, proto) {
-        if (object[superProp] === undefined) {
-            object[superProp] = proto;
+    function delegate(proto, name, object) {
+        function boundFunc() {
+            return proto[name].apply(boundFunc[boundProp] || this, arguments);
         }
+        boundFunc[boundProp] = object;
+        return boundFunc;
     }
 
     function sequence(before, after) {
@@ -50,8 +55,12 @@
         },
 
         around: function (orig, func) {
+            if (orig[boundProp] === undefined) {
+                orig = bound(orig, false);
+            }
             return function () {
-                var args = [bound(orig, this)];
+                orig[boundProp] = this;
+                var args = [orig];
                 args.push.apply(args, arguments);
                 return func.apply(this, args);
             };
@@ -72,7 +81,7 @@
         function Prototype() {}
         Prototype[protoProp] = supr;
         proto = new Prototype();
-        setSuper(proto, supr);
+        proto[superProp] = supr;
 
         function Class() {
             var self = this;
@@ -80,7 +89,7 @@
             if (self instanceof Class === false) {
                 self = new Class();
             }
-            setSuper(self, proto);
+            self[superProp] = proto;
 
             if (aFunction(self.init)) {
                 self.init.apply(self, arguments);
@@ -108,7 +117,7 @@
         }
 
         for (key in baseProto) {
-            Class[key] = bound(baseProto[key], proto);
+            Class[key] = delegate(baseProto, key, proto);
         }
 
         Class.extend = function (properties) {
@@ -123,11 +132,7 @@
         if (source.hasOwnProperty(name)) {
             orig = source[name];
         } else {
-            var supr = target[superProp];
-
-            orig = function () {
-                return supr[name].apply(this, arguments);
-            };
+            orig = delegate(target[superProp], name, false);
         }
         return modifier.call(target, orig, value);
     }
