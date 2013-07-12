@@ -55,7 +55,7 @@
 
         around: function (orig, func) {
             if (orig[boundProp] === undefined) {
-                orig = bound(orig, false);
+                orig = bound(orig, null);
             }
             return function () {
                 orig[boundProp] = this;
@@ -136,7 +136,7 @@
         if (source.hasOwnProperty(name)) {
             orig = source[name];
         } else {
-            orig = delegate(target[superProp], name, false);
+            orig = delegate(target[superProp], name, null);
         }
         return modifier.call(target, orig, value);
     }
