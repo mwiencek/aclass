@@ -67,6 +67,8 @@
         }
     };
 
+    function Prototype() {}
+
     function aclass(arg0, arg1) {
         var supr, proto, properties;
 
@@ -78,7 +80,6 @@
         }
         properties = aFunction(arg1) ? { init: arg1 } : arg1;
 
-        function Prototype() {}
         Prototype[protoProp] = supr;
         proto = new Prototype();
         proto[superProp] = supr;
