@@ -79,8 +79,12 @@
                         modifier = methodModifiers[match[1]];
 
                     key = match[2];
-                    value = modifyMethod(properties, this,
-                                         key, value, modifier);
+                    var orig = properties[key];
+
+                    if (orig !== undefined && !this.hasOwnProperty(key)) {
+                        this[key] = orig;
+                    }
+                    value = modifyMethod(this, key, value, modifier);
                 }
                 this[key] = value;
             }
@@ -131,21 +135,21 @@
         return Class;
     }
 
-    function modifyMethod(source, target, name, value, modifier) {
+    function modifyMethod(object, name, value, modifier) {
         var orig;
-        if (source.hasOwnProperty(name)) {
-            orig = source[name];
+        if (object.hasOwnProperty(name)) {
+            orig = object[name];
         } else {
-            orig = delegate(target[superProp], name, null);
+            orig = delegate(object[superProp], name, null);
         }
-        return modifier.call(target, orig, value);
+        return modifier.call(object, orig, value);
     }
 
     aclass.methodModifier = function (modifierName, modifier) {
         methodModifiers[modifierName] = modifier;
 
         baseProto[modifierName] = function (name, func) {
-            this[name] = modifyMethod(this, this, name, func, modifier);
+            this[name] = modifyMethod(this, name, func, modifier);
         };
     };
 
