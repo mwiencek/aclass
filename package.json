@@ -1,7 +1,7 @@
 {
   "name": "aclass",
   "version": "0.3.0",
-  "description": "A small wrapper over JavaScript's prototype system that eases the creation of classes.",
+  "description": "A small but powerful wrapper over JavaScript's prototype system that eases the creation of classes.",
   "keywords": ["classes", "prototypes", "methods", "inheritance"],
   "bugs": "https://github.com/mwiencek/aclass/issues",
   "license": "MIT",

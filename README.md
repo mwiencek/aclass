@@ -1,6 +1,6 @@
 # aclass
 
-A small wrapper over JavaScript's prototype system that eases the creation of classes. AMD support is included.
+A small but powerful wrapper over JavaScript's prototype system that eases the creation of classes. AMD support is included.
 
 ```JavaScript
 var FourLeggedThing = aclass({
