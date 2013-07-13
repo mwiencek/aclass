@@ -1,3 +1,11 @@
+/* aclass 0.3.2
+ * https://github.com/mwiencek/aclass
+ *
+ * Copyright (C) 2013 Michael Wiencek
+ *
+ * Released under the MIT license:
+ * http://opensource.org/licenses/MIT
+ */
 (function (root, factory) {
     "use strict";
 
