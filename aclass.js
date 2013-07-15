@@ -1,4 +1,4 @@
-/* aclass 0.3.2
+/* aclass 0.3.3
  * https://github.com/mwiencek/aclass
  *
  * Copyright (C) 2013 Michael Wiencek

@@ -1,6 +1,8 @@
 # aclass
 
-A small but powerful wrapper over JavaScript's prototype system that eases the creation of classes. AMD support is included.
+A small but powerful wrapper over JavaScript's prototype system that eases the creation of classes.
+
+Supports IE6+, modern browsers, and AMD.
 
 ```JavaScript
 var FourLeggedThing = aclass({
@@ -115,6 +117,10 @@ var b = new B();
 b.setProp(10) === 100;
 ```
 
+#### Class.static(methodName, func)
+
+Declares a static method which is directly callable from ```Class[methodName]```. Within ```func```, ```this``` is bound to ```Class.prototype```.
+
 ### $-syntax
 
 Method modifiers can be called during class creation:
@@ -147,7 +153,7 @@ Custom method modifiers can be created, as described below.
 
 ```name``` is the name of the modifier.
 
-```func``` is a function that accepts two parameters: the original function being replaced*, and an additional callback (if any). ```func``` must return a new function that does something with either of these.
+```func``` is a callback that receives two main parameters: the original function being modified* (if any), and the function that's replacing it (if any). It also receives the name of the method in question as the third parameter. Typically, ```func``` should return a new function that does something with these parameters, but you can be as creative as you want.
 
 If you're using the $-syntax, the callback is the function you assign to the ```modifier$method``` property. For example:
 
