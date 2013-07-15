@@ -104,6 +104,14 @@ describe("classes", function () {
         expect(a.init).toBe(init);
         expect(a.property).toBe(577);
     });
+
+    it("doesn't call init() twice when \"new\" is omitted", function () {
+        var count = 0;
+
+        aclass(function () { count++ })();
+
+        expect(count).toBe(1);
+    });
 });
 
 describe("method modifiers", function () {

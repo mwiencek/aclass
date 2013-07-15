@@ -119,16 +119,25 @@
             proto.extend(aFunction(arg1) ? { init: arg1 } : arg1);
         }
 
+        // init() can run twice if Class is called without new.
+        // Guard against that with an "initiate" flag.
+        var initiate = true;
+
         function Class() {
             var self = this;
 
             if (self instanceof Class === false) {
+                initiate = false;
                 self = new Class();
+                initiate = true;
             }
-            self[superProp] = proto;
 
-            if (aFunction(self.init)) {
-                self.init.apply(self, arguments);
+            if (initiate === true) {
+                self[superProp] = proto;
+
+                if (aFunction(self.init)) {
+                    self.init.apply(self, arguments);
+                }
             }
             return self;
         }
