@@ -71,6 +71,14 @@
                 args.push.apply(args, arguments);
                 return func.apply(this, args);
             };
+        },
+
+        static: function (orig, func, name) {
+            var proto = this;
+
+            this[constProp][name] = function () {
+                return func.apply(proto, arguments);
+            };
         }
     };
 
@@ -115,10 +123,6 @@
         proto = new Prototype();
         proto[superProp] = supr;
 
-        if (arg1 !== undefined) {
-            proto.extend(aFunction(arg1) ? { init: arg1 } : arg1);
-        }
-
         // init() can run twice if Class is called without new.
         // Guard against that with an "initiate" flag.
         var initiate = true;
@@ -145,6 +149,10 @@
         proto[constProp] = Class;
         Class[protoProp] = proto;
 
+        if (arg1 !== undefined) {
+            proto.extend(aFunction(arg1) ? { init: arg1 } : arg1);
+        }
+
         for (key in baseProto) {
             Class[key] = delegate(baseProto, key, proto);
         }
@@ -159,14 +167,18 @@
         } else {
             orig = delegate(object[superProp], name, null);
         }
-        return modifier.call(object, orig, value);
+        return modifier.call(object, orig, value, name);
     }
 
     aclass.methodModifier = function (modifierName, modifier) {
         methodModifiers[modifierName] = modifier;
 
         baseProto[modifierName] = function (name, func) {
-            this[name] = modifyMethod(this, name, func, modifier);
+            var result = modifyMethod(this, name, func, modifier);
+
+            if (aFunction(result)) {
+                this[name] = result;
+            }
         };
     };
 

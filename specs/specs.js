@@ -248,4 +248,18 @@ describe("method modifiers", function () {
         expect(a.inc()).toBe(3);
         expect(a.three).toBe(true);
     });
+
+    it("can define static methods", function () {
+        var A = aclass({
+            count: 0,
+
+            static$inc: function () {
+                this.count++;
+            }
+        });
+
+        A.inc();
+
+        expect(A.prototype.count).toBe(1);
+    });
 });
