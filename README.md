@@ -78,6 +78,35 @@ angryCat.extend({
 
 An API is available for augmenting methods, inspired by Moose's [method modifiers](http://search.cpan.org/dist/Moose/lib/Moose/Manual/MethodModifiers.pod).
 
+There are two ways to use these. The most convenient way is the ```modifier$method``` syntax, only usable within the ```properties``` of a class definition:
+
+```JavaScript
+var Cat = aclass(FourLeggedThing, {
+
+    // delegates to FourLeggedThing.prototype.init
+    around$init: function (supr) {
+        supr("meow");
+    }
+});
+```
+
+(See below for a complete explanation of ```around```.)
+
+The second way to use method modifiers is, well, as methods:
+
+```JavaScript
+var Cat = aclass(FourLeggedThing);
+
+// equivalent to the example above
+Cat.around("init", function (supr) {
+    supr("meow");
+});
+```
+
+This is necessary if a class is defined somewhere else, and you want to modify it later. It's also necessary if you want to use method modifiers on an instance of a class.
+
+Available modifiers are listed below.
+
 #### classOrInstance.before(methodName, func)
 #### classOrInstance.after(methodName, func)
 
@@ -95,55 +124,67 @@ Replaces ```classOrInstance[methodName]``` with function ```func```, which recie
  * You have complex code that you want to run before *and* after the original method.
  * You may not want to run the original method at all.
 
-```around()``` is the suggested way to call ```methodName``` in the parent class:
+```around()``` is the suggested way to call ```methodName``` in the parent class. See above for an example of this.
+
+#### classOrInstance.augment(methodName, func)
+
+```augment()``` is the inverse of ```around()```. The original method receives an ```inner``` function as the first argument, which subclasses then implement via ```augment()```.
 
 ```JavaScript
-var A = aclass({
+var Sign = aclass({
 
-    setProp: function (prop) {
-        this.prop = prop;
-        return prop;
+    init: function (canvas, text) {
+        this.canvas = canvas;
+        this.text = text;
+
+        canvas.width = 100;
+        canvas.height = 100;
+    },
+
+    draw: function (inner) {
+        var context = this.canvas.getContext("2d");
+
+        inner(context);
+
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillStyle = "#000";
+        context.fillText(this.text, 50, 50);
     }
 });
 
-var B = aclass(A);
+var YieldSign = aclass(Sign, {
 
-B.around("setProp", function (supr, prop) {
-    return supr(prop * 10);
+    around$init: function (supr, canvas) {
+        supr(canvas, "YIELD");
+    },
+
+    augment$draw: function (context) {
+        context.beginPath();
+
+        context.moveTo(0, 99);
+        context.lineTo(50, 0);
+        context.lineTo(99, 99);
+        context.lineTo(0, 99);
+
+        context.strokeStyle = "#000";
+        context.fillStyle = "#ff0";
+        context.stroke();
+        context.fill();
+
+        context.closePath();
+    }
 });
 
-var b = new B();
+var canvas = document.createElement("canvas");
+document.body.appendChild(canvas);
 
-b.setProp(10) === 100;
+YieldSign(canvas).draw();
 ```
 
 #### Class.static(methodName, func)
 
 Declares a static method which is directly callable from ```Class[methodName]```. Within ```func```, ```this``` is bound to ```Class.prototype```.
-
-### $-syntax
-
-Method modifiers can be called during class creation:
-
-```JavaScript
-var Cat = aclass(FourLeggedThing, {
-
-    // delegates to FourLeggedThing.prototype.init
-    around$init: function (supr) {
-        supr("meow");
-    }
-});
-```
-
-The syntax is:
-
-```JavaScript
-...
-modifier$method: function () {
-    // this function is passed as the second argument to modifier
-},
-...
-```
 
 ### create your own™
 

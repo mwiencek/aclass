@@ -262,4 +262,22 @@ describe("method modifiers", function () {
 
         expect(A.prototype.count).toBe(1);
     });
+
+    it("can augment methods", function () {
+        var A = aclass({
+            method: function (inner, arg) {
+                return inner(arg) + 11;
+            }
+        });
+
+        var B = aclass(A, {
+            augment$method: function (arg) {
+                return arg * 100;
+            }
+        });
+
+        var b = new B();
+
+        expect(b.method(1)).toBe(111);
+    });
 });

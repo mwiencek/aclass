@@ -1,4 +1,4 @@
-/* aclass 0.3.3
+/* aclass 0.3.4
  * https://github.com/mwiencek/aclass
  *
  * Copyright (C) 2013 Michael Wiencek
@@ -41,24 +41,20 @@
         return boundFunc;
     }
 
-    function sequence(before, after) {
-        return function () {
-            before.apply(this, arguments);
-            after.apply(this, arguments);
-        };
-    }
-
     function aFunction(object) {
         return typeof object === "function";
     }
 
     var methodModifiers = {
         before: function (orig, func) {
-            return sequence(func, orig);
+            return function () {
+                func.apply(this, arguments);
+                orig.apply(this, arguments);
+            };
         },
 
         after: function (orig, func) {
-            return sequence(orig, func);
+            return methodModifiers.before(func, orig);
         },
 
         around: function (orig, func) {
@@ -71,6 +67,10 @@
                 args.push.apply(args, arguments);
                 return func.apply(this, args);
             };
+        },
+
+        augment: function (orig, func) {
+            return methodModifiers.around(func, orig);
         },
 
         static: function (orig, func, name) {
