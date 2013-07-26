@@ -112,6 +112,13 @@ describe("classes", function () {
 
         expect(count).toBe(1);
     });
+
+    it("allow chaining off of extend()", function () {
+        var A = aclass().extend({ foo: 111 }).extend({ bar: 222 });
+
+        expect(A.foo).toBe(111);
+        expect(A.bar).toBe(222);
+    });
 });
 
 describe("method modifiers", function () {

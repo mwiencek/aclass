@@ -104,6 +104,7 @@
                 }
                 this[key] = value;
             }
+            return this;
         }
     };
 
