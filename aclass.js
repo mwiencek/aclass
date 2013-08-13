@@ -1,4 +1,4 @@
-/* aclass 0.3.4
+/* aclass 0.3.5
  * https://github.com/mwiencek/aclass
  *
  * Copyright (C) 2013 Michael Wiencek
@@ -33,9 +33,11 @@
         return boundFunc;
     }
 
-    function delegate(proto, name, object) {
+    function delegate(proto, name, object, chain) {
         function boundFunc() {
-            return proto[name].apply(boundFunc[boundProp] || this, arguments);
+            var result = proto[name].apply(boundFunc[boundProp] || this,
+                                           arguments);
+            return chain ? this : result;
         }
         boundFunc[boundProp] = object;
         return boundFunc;
@@ -155,7 +157,7 @@
         }
 
         for (key in baseProto) {
-            Class[key] = delegate(baseProto, key, proto);
+            Class[key] = delegate(baseProto, key, proto, true);
         }
 
         return Class;
@@ -180,6 +182,7 @@
             if (aFunction(result)) {
                 this[name] = result;
             }
+            return this;
         };
     };
 

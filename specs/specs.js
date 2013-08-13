@@ -113,11 +113,23 @@ describe("classes", function () {
         expect(count).toBe(1);
     });
 
-    it("allow chaining off of extend()", function () {
+    it("can use method chaining", function () {
         var A = aclass().extend({ foo: 111 }).extend({ bar: 222 });
 
-        expect(A.foo).toBe(111);
-        expect(A.bar).toBe(222);
+        expect(A.prototype.foo).toBe(111);
+        expect(A.prototype.bar).toBe(222);
+
+        var a = new A();
+
+        expect(a.foo).toBe(111);
+        expect(a.bar).toBe(222);
+
+        var b = a.static("baz").around("noop").extend({ hi: 333 });
+
+        expect(b).toBe(a);
+        expect(A.baz).not.toBeUndefined();
+        expect(a.noop).not.toBeUndefined();
+        expect(a.hi).toBe(333);
     });
 });
 
