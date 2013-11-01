@@ -1,11 +1,24 @@
 {
     "name": "aclass",
+    "description": "A small but powerful wrapper over JavaScript's prototype system that eases the creation of classes.",
+    "keywords": ["classes", "prototypes", "methods", "inheritance", "objects", "instances"],
     "version": "0.3.5",
     "main": "aclass.js",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mwiencek/aclass.git"
+    },
+    "authors": [
+        {
+            "name": "Michael Wiencek",
+            "email": "mwiencek1@gmail.com"
+        }
+    ],
     "ignore": [
         "specs",
         "Gruntfile.js",
         "package.json",
         ".gitignore"
-    ]
+    ],
 }
