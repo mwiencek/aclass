@@ -35,8 +35,9 @@
 
     function delegate(proto, name, object, chain) {
         function boundFunc() {
-            var result = proto[name].apply(boundFunc[boundProp] || this,
-                                           arguments);
+            var result = proto[name].apply(
+                boundFunc[boundProp] || this, arguments
+            );
             return chain ? this : result;
         }
         boundFunc[boundProp] = object;
