@@ -143,7 +143,11 @@
                 self[superProp] = proto;
 
                 if (aFunction(self.init)) {
-                    self.init.apply(self, arguments);
+                    var result = self.init.apply(self, arguments);
+
+                    if (result !== undefined) {
+                        return result;
+                    }
                 }
             }
             return self;
