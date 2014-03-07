@@ -131,6 +131,21 @@ describe("classes", function () {
         expect(a.noop).not.toBeUndefined();
         expect(a.hi).toBe(333);
     });
+
+    it("can return a different object from their constructor", function () {
+        var cache = {};
+
+        var A = aclass(function (id) {
+            return cache[id] || (cache[id] = this);
+        });
+
+        var a = new A(1);
+        var b = new A(1);
+        var c = new A(2);
+
+        expect(a).toBe(b);
+        expect(a).not.toBe(c);
+    });
 });
 
 describe("method modifiers", function () {
