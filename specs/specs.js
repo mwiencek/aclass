@@ -346,6 +346,64 @@ describe("method modifiers", function () {
         expect(a.method("A")).toBe("ABCDEFGH");
     });
 
+    function wrapOuter(inner, wrap) {
+        return inner(wrap);
+    }
+
+    it("can augment the same parent method from two different children", function () {
+        var A = aclass({ wrap: wrapOuter });
+
+        var B = aclass(A);
+        var C = aclass(A);
+
+        B.augment("wrap", function (wrap) {
+            return wrap + "HAH" + wrap;
+        });
+
+        C.augment("wrap", function (wrap) {
+            return wrap + "HUH" + wrap;
+        });
+
+        var b = B();
+        var c = C();
+
+        expect(b.wrap("~")).toBe("~HAH~");
+        expect(c.wrap("!")).toBe("!HUH!");
+    });
+
+    it("can allow augmented method calls to be arbitrarily nested", function () {
+        var A = aclass({ wrap: wrapOuter });
+
+        var B = aclass(A, { value: "B" });
+        var C = aclass(A, { value: "C" });
+        var b = B();
+        var c = C();
+
+        B.augment("wrap", function (wrap) {
+            return c.wrap(wrap + this.value + wrap);
+        });
+
+        C.augment("wrap", function (wrap) {
+            return wrap + this.value + wrap;
+        });
+
+        C.around("wrap", function (supr, wrap) {
+            return "[" + supr(wrap) + "]";
+        });
+
+        expect(b.wrap("/")).toBe("[/B/C/B/]");
+
+        A.augment("wrap", function (inner, wrap) {
+            return "<" + inner(wrap) + ">";
+        });
+
+        c.around("wrap", function (supr, wrap) {
+            return "~" + supr(wrap) + "~";
+        });
+
+        expect(b.wrap("/")).toBe("<~[</B/C/B/>]~>");
+    });
+
     it("can wrap around methods", function () {
         var A = aclass({
             method: function (name) {
