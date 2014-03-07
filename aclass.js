@@ -1,7 +1,7 @@
-/* aclass 0.3.5
+/* aclass 0.4.0
  * https://github.com/mwiencek/aclass
  *
- * Copyright (C) 2013 Michael Wiencek
+ * Copyright (C) 2014 Michael Wiencek
  *
  * Released under the MIT license:
  * http://opensource.org/licenses/MIT
