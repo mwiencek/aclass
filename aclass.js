@@ -24,7 +24,10 @@
         superProp = "__super__",
         boundProp = "__bound__",
         methodModifier = /^(\w+)\$(\w+)$/,
-        augmenting = false;
+        augmenting = false,
+        // init() can run twice if Class is called without new.
+        // Guard against that with a skipInit sentinel.
+        skipInit = [];
 
     function bound(func, object) {
         function boundFunc() {
@@ -152,20 +155,14 @@
         proto = new Prototype();
         proto[superProp] = supr;
 
-        // init() can run twice if Class is called without new.
-        // Guard against that with an "initiate" flag.
-        var initiate = true;
-
-        function Class() {
+        function Class(skip) {
             var self = this;
 
             if (self instanceof Class === false) {
-                initiate = false;
-                self = new Class();
-                initiate = true;
+                self = new Class(skipInit);
             }
 
-            if (initiate === true) {
+            if (skip !== skipInit) {
                 self[superProp] = proto;
 
                 if (aFunction(self.init)) {
