@@ -23,7 +23,8 @@
         constProp = "constructor",
         superProp = "__super__",
         boundProp = "__bound__",
-        methodModifier = /^(\w+)\$(\w+)$/;
+        methodModifier = /^(\w+)\$(\w+)$/,
+        augmenting = false;
 
     function bound(func, object) {
         function boundFunc() {
@@ -48,6 +49,15 @@
         return typeof object === "function";
     }
 
+    function passFunctionTo(orig, func, owner) {
+        return function () {
+            orig[boundProp] = owner || this;
+            var args = [orig];
+            args.push.apply(args, arguments);
+            return func.apply(this, args);
+        };
+    }
+
     var methodModifiers = {
         before: function (orig, func) {
             return function () {
@@ -64,16 +74,31 @@
             if (orig[boundProp] === undefined) {
                 orig = bound(orig, null);
             }
-            return function () {
-                orig[boundProp] = this;
-                var args = [orig];
-                args.push.apply(args, arguments);
-                return func.apply(this, args);
-            };
+            return passFunctionTo(orig, func);
         },
 
-        augment: function (orig, func) {
-            return methodModifiers.around(func, orig);
+        augment: function (outer, inner) {
+            if (inner[boundProp] === undefined) {
+                inner = bound(inner, null);
+            }
+            return function () {
+                inner[boundProp] = this;
+
+                if (augmenting) {
+                    var args = arguments;
+                    args[0] = passFunctionTo(args[0], inner, this);
+                } else {
+                    var args = [inner];
+                    args.push.apply(args, arguments);
+                }
+
+                augmenting = true;
+                try {
+                    return outer.apply(this, args);
+                } finally {
+                    augmenting = false;
+                }
+            };
         },
 
         static: function (orig, func, name) {

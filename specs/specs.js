@@ -1,6 +1,6 @@
 describe("classes", function () {
 
-    it("can pass a BaseClass as the first argument to aclass()", function () {
+    it("can be instantiated with a base class", function () {
         var A = aclass();
         var B = aclass(A);
 
@@ -13,7 +13,7 @@ describe("classes", function () {
         expect(b instanceof B).toBe(true);
     });
 
-    it("can call extend() on an existing class or instance", function () {
+    it("can have properties added via extend()", function () {
         var A = aclass();
 
         A.extend({
@@ -61,7 +61,7 @@ describe("classes", function () {
         expect(a.method).toBe(b.method);
     });
 
-    it("can override methods", function () {
+    it("can override inherited methods", function () {
         var A = aclass({
             method: function () {
                 return true;
@@ -93,7 +93,7 @@ describe("classes", function () {
         expect(a.method()).toBe(true);
     });
 
-    it("can provide an init() method for the constructor", function () {
+    it("can be instantiated with a single init function", function () {
         function init(prop) {
             this.property = prop;
         }
@@ -105,7 +105,7 @@ describe("classes", function () {
         expect(a.property).toBe(577);
     });
 
-    it("doesn't call init() twice when \"new\" is omitted", function () {
+    it("do not have their init() called twice when \"new\" is omitted", function () {
         var count = 0;
 
         aclass(function () { count++ })();
@@ -140,7 +140,7 @@ describe("method modifiers", function () {
         return prop;
     }
 
-    it("can use method modifiers on a class", function () {
+    it("can be called on a class", function () {
         var A = aclass(setProp);
 
         A.before("init", function () {
@@ -162,7 +162,7 @@ describe("method modifiers", function () {
         expect(a.property).toBe(5770);
     });
 
-    it("can use method modifiers on an instance", function () {
+    it("can be called on an instance", function () {
         var A = aclass({ setProp: setProp });
         var a = new A();
 
@@ -179,7 +179,7 @@ describe("method modifiers", function () {
         expect(result).toBe(5770);
     });
 
-    it("can use method modifiers with an inherited method", function () {
+    it("can be used on an inherited method", function () {
         var A = aclass({ setProp: setProp });
         var B = aclass(A);
 
@@ -201,7 +201,7 @@ describe("method modifiers", function () {
         expect(b.setProp(5)).toBe(100);
     });
 
-    it("can use the dollar-sign syntax", function () {
+    it("can be used via $-syntax", function () {
         var A = aclass({
             init: setProp,
             methodA: function (a) {
@@ -238,7 +238,7 @@ describe("method modifiers", function () {
         expect(b.b).toBe(13);
     });
 
-    it("can create custom method modifiers", function () {
+    it("can be defined via aclass.methodModifier", function () {
         aclass.methodModifier("countCalls", function (orig, callback) {
             return function () {
                 this.count += 1;
@@ -282,21 +282,103 @@ describe("method modifiers", function () {
         expect(A.prototype.count).toBe(1);
     });
 
-    it("can augment methods", function () {
+    function augmentedA(inner, name) {
+        expect(this.constructor.name).toBe("Class");
+        expect(name).toBe("A");
+
+        name = inner(name + "B");
+
+        expect(name).toBe("ABCDEFG");
+
+        return name + "H";
+    }
+
+    function augmentedB(inner, name) {
+        expect(this.constructor.name).toBe("Class");
+        expect(name).toBe("AB");
+
+        name = inner(name + "C");
+
+        expect(name).toBe("ABCDEF");
+
+        return name + "G";
+    }
+
+    function augmentedC(inner, name) {
+        expect(this.constructor.name).toBe("Class");
+        expect(name).toBe("ABC");
+
+        name = inner(name + "D");
+
+        expect(name).toBe("ABCDE")
+
+        return name + "F";
+    }
+
+    function augmentedD(name) {
+        expect(this.constructor.name).toBe("Class");
+        expect(name).toBe("ABCD");
+
+        return name + "E";
+    }
+
+    it("can augment class methods", function () {
+        var A = aclass({ method: augmentedA });
+
+        var B = aclass(A, { augment$method: augmentedB });
+        var C = aclass(B, { augment$method: augmentedC });
+        var D = aclass(C, { augment$method: augmentedD });
+
+        var d = new D();
+
+        expect(d.method("A")).toBe("ABCDEFGH");
+    });
+
+    it("can augment instance methods", function () {
+        var A = aclass({ method: augmentedA });
+
+        var a = A();
+
+        a.augment("method", augmentedB);
+        a.augment("method", augmentedC);
+        a.augment("method", augmentedD);
+
+        expect(a.method("A")).toBe("ABCDEFGH");
+    });
+
+    it("can wrap around methods", function () {
         var A = aclass({
-            method: function (inner, arg) {
-                return inner(arg) + 11;
+            method: function (name) {
+                return name + "D";
             }
         });
 
         var B = aclass(A, {
-            augment$method: function (arg) {
-                return arg * 100;
+            around$method: function (supr, name) {
+                expect(name).toBe("AB");
+
+                name = supr(name + "C");
+
+                expect(name).toBe("ABCD");
+
+                return name + "E";
             }
         });
 
-        var b = new B();
+        var C = aclass(B, {
+            around$method: function (supr, name) {
+                expect(name).toBe("A");
 
-        expect(b.method(1)).toBe(111);
+                name = supr(name + "B");
+
+                expect(name).toBe("ABCDE");
+
+                return name + "F";
+            }
+        });
+
+        var c = new C();
+
+        expect(c.method("A")).toBe("ABCDEF");
     });
 });
