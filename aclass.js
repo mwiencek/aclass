@@ -1,7 +1,7 @@
 /* aclass 0.4.0
  * https://github.com/mwiencek/aclass
  *
- * Copyright (C) 2014 Michael Wiencek
+ * Copyright (C) 2014 Michael Wiencek <mwtuea@gmail.com>
  *
  * Released under the MIT license:
  * http://opensource.org/licenses/MIT
@@ -19,96 +19,138 @@
 }(this, function () {
     "use strict";
 
-    var protoProp = "prototype",
+    var push = Array.prototype.push,
+        protoProp = "prototype",
         constProp = "constructor",
         superProp = "__super__",
-        boundProp = "__bound__",
+        innerProp = "__inner__",
+        stackProp = "__stack__",
         methodModifier = /^(\w+)\$(\w+)$/,
-        augmenting = false,
         // init() can run twice if Class is called without new.
         // Guard against that with a skipInit sentinel.
         skipInit = [];
 
-    function bound(func, object) {
-        function boundFunc() {
-            return func.apply(boundFunc[boundProp] || this, arguments);
-        }
-        boundFunc[boundProp] = object;
-        return boundFunc;
-    }
-
-    function delegate(proto, name, object, chain) {
-        function boundFunc() {
-            var result = proto[name].apply(
-                boundFunc[boundProp] || this, arguments
-            );
-            return chain ? this : result;
-        }
-        boundFunc[boundProp] = object;
-        return boundFunc;
+    function classDelegate(supr, name, object) {
+        return function () {
+            supr[name].apply(object, arguments);
+            return this;
+        };
     }
 
     function aFunction(object) {
         return typeof object === "function";
     }
 
-    function passFunctionTo(orig, func, owner) {
+    function sequence(before, after) {
         return function () {
-            orig[boundProp] = owner || this;
-            var args = [orig];
-            args.push.apply(args, arguments);
-            return func.apply(this, args);
+            before.apply(this, arguments);
+            after.apply(this, arguments);
+        };
+    }
+
+    function methodOrDelegate(owner, name) {
+        if (owner.hasOwnProperty(name)) {
+            return owner[name];
+        }
+        var proto = owner[superProp];
+
+        return function () {
+            return proto[name].apply(this, arguments);
         };
     }
 
     var methodModifiers = {
-        before: function (orig, func) {
+        before: function (owner, name, func) {
+            return sequence(func, methodOrDelegate(owner, name));
+        },
+
+        after: function (owner, name, func) {
+            return sequence(methodOrDelegate(owner, name), func);
+        },
+
+        around: function (owner, name, func) {
+            var orig = methodOrDelegate(owner, name);
+
             return function () {
-                func.apply(this, arguments);
-                orig.apply(this, arguments);
+                var self = this,
+                    args = [supr];
+
+                function supr() {
+                    return orig.apply(self, arguments);
+                }
+
+                push.apply(args, arguments);
+                return func.apply(this, args);
             };
         },
 
-        after: function (orig, func) {
-            return methodModifiers.before(func, orig);
-        },
+        // augment$ is the inverse of around$, with the methods being called in
+        // reverse: the next (inner) method in the chain is always passed to
+        // the previous (outer) method in the chain, which can decide to call
+        // it or not. Unlike around$, we cannot simply unshift the inner method
+        // onto the arguments array for the outer method: if the outer method
+        // is itself the inner method for something higher in the chain, then
+        // doing so would cause the outermost method to receive every single
+        // inner method in the chain in its arguments array.
 
-        around: function (orig, func) {
-            if (orig[boundProp] === undefined) {
-                orig = bound(orig, null);
-            }
-            return passFunctionTo(orig, func);
-        },
+        augment: function (owner, name, func) {
+            var orig = owner.hasOwnProperty(name) ? owner[name] : null;
 
-        augment: function (outer, inner) {
-            if (inner[boundProp] === undefined) {
-                inner = bound(inner, null);
-            }
-            return function () {
-                inner[boundProp] = this;
+            function augmented() {
+                var self = this,
+                    outer = orig || owner[superProp][name],
+                    augmentStack = this[stackProp],
+                    next;
 
-                if (augmenting) {
+                if (augmentStack === undefined) {
+                    augmentStack = this[stackProp] = [];
+                }
+
+                function inner() {
                     var args = arguments;
-                    args[0] = passFunctionTo(args[0], inner, this);
-                } else {
-                    var args = [inner];
-                    args.push.apply(args, arguments);
+
+                    // Don't pop multiple functions off the stack if the outer
+                    // method calls inner() multiple times.
+                    next = next || augmentStack.pop();
+
+                    // The innermost method does not have a next-most-inner
+                    // method; it is called directly with the original args.
+                    if (next) {
+                        args = [next];
+                        push.apply(args, arguments);
+                    }
+
+                    return func.apply(self, args);
                 }
 
-                augmenting = true;
-                try {
-                    return outer.apply(this, args);
-                } finally {
-                    augmenting = false;
+                // If the outer method is also an inner method (i.e., defined
+                // by augmented()), delay passing the current inner method.
+                if (outer[innerProp]) {
+                    augmentStack.push(inner);
+
+                    try {
+                        return outer.apply(this, arguments);
+                    } finally {
+                        // The outer method did not call its inner method;
+                        // remove it from the stack.
+                        if (augmentStack[augmentStack.length - 1] === inner) {
+                            augmentStack.pop();
+                        }
+                    }
                 }
-            };
+
+                var args = [inner];
+                push.apply(args, arguments);
+                return outer.apply(this, args);
+            }
+
+            augmented[innerProp] = true;
+            return augmented;
         },
 
-        static: function (orig, func, name) {
-            var proto = this;
-
-            this[constProp][name] = function () {
-                return func.apply(proto, arguments);
+        static: function (owner, name, func) {
+            owner[constProp][name] = function () {
+                return func.apply(owner, arguments);
             };
         }
     };
@@ -131,7 +173,11 @@
                     if (orig !== undefined && !this.hasOwnProperty(key)) {
                         this[key] = orig;
                     }
-                    value = modifyMethod(this, key, value, modifier);
+                    value = modifier(this, key, value);
+
+                    if (!aFunction(value)) {
+                        continue;
+                    }
                 }
                 this[key] = value;
             }
@@ -184,27 +230,17 @@
         }
 
         for (key in baseProto) {
-            Class[key] = delegate(baseProto, key, proto, true);
+            Class[key] = classDelegate(baseProto, key, proto);
         }
 
         return Class;
-    }
-
-    function modifyMethod(object, name, value, modifier) {
-        var orig;
-        if (object.hasOwnProperty(name)) {
-            orig = object[name];
-        } else {
-            orig = delegate(object[superProp], name, null);
-        }
-        return modifier.call(object, orig, value, name);
     }
 
     aclass.methodModifier = function (modifierName, modifier) {
         methodModifiers[modifierName] = modifier;
 
         baseProto[modifierName] = function (name, func) {
-            var result = modifyMethod(this, name, func, modifier);
+            var result = modifier(this, name, func);
 
             if (aFunction(result)) {
                 this[name] = result;

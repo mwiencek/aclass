@@ -254,7 +254,9 @@ describe("method modifiers", function () {
     });
 
     it("can be defined via aclass.methodModifier", function () {
-        aclass.methodModifier("countCalls", function (orig, callback) {
+        aclass.methodModifier("countCalls", function (owner, name, callback) {
+            var orig = owner[name];
+
             return function () {
                 this.count += 1;
                 callback.call(this, this.count);
@@ -296,6 +298,75 @@ describe("method modifiers", function () {
 
         expect(A.prototype.count).toBe(1);
     });
+});
+
+
+describe("around$ modifiers", function () {
+
+    it("can wrap around inherited methods", function () {
+        var A = aclass({
+            method: function (name) {
+                return name + "D";
+            }
+        });
+
+        var B = aclass(A, {
+            around$method: function (supr, name) {
+                expect(name).toBe("AB");
+
+                name = supr(name + "C");
+
+                expect(name).toBe("ABCD");
+
+                return name + "E";
+            }
+        });
+
+        var C = aclass(B, {
+            around$method: function (supr, name) {
+                expect(name).toBe("A");
+
+                name = supr(name + "B");
+
+                expect(name).toBe("ABCDE");
+
+                return name + "F";
+            }
+        });
+
+        var c = new C();
+
+        expect(c.method("A")).toBe("ABCDEF");
+    });
+
+    it("have their supr() retain the correct context when calls are nested", function () {
+        var called = false;
+
+        var A = aclass({
+            init: function (foo) {
+                this.value = String(foo);
+            }
+        });
+
+        var B = aclass(A, {
+            around$init: function (supr, foo) {
+                if (called) {
+                    return null;
+                }
+                called = true;
+                B(67890);
+                supr(foo);
+            }
+        });
+
+        var b = B(12345);
+
+        expect(b.value).toBe("12345");
+    });
+});
+
+
+describe("augment$ modifiers", function () {
 
     function augmentedA(inner, name) {
         expect(this.constructor.name).toBe("Class");
@@ -386,7 +457,7 @@ describe("method modifiers", function () {
         expect(c.wrap("!")).toBe("!HUH!");
     });
 
-    it("can allow augmented method calls to be arbitrarily nested", function () {
+    it("can be arbitrarily nested", function () {
         var A = aclass({ wrap: wrapOuter });
 
         var B = aclass(A, { value: "B" });
@@ -419,39 +490,249 @@ describe("method modifiers", function () {
         expect(b.wrap("/")).toBe("<~[</B/C/B/>]~>");
     });
 
-    it("can wrap around methods", function () {
+    it("can be called via around", function () {
         var A = aclass({
-            method: function (name) {
-                return name + "D";
+            magic: function (inner, foo) {
+                var bar = inner(foo);
+
+                if (bar > 0) {
+                    return B().magic(bar);
+                } else {
+                    return bar;
+                }
             }
         });
 
         var B = aclass(A, {
-            around$method: function (supr, name) {
-                expect(name).toBe("AB");
+            augment$magic: function (foo) {
+                return foo - 1;
+            }
+        });
 
-                name = supr(name + "C");
+        B.around("magic", function (supr, foo) {
+            return supr(foo);
+        });
 
-                expect(name).toBe("ABCD");
+        var b = B();
 
-                return name + "E";
+        expect(b.magic(10)).toBe(0);
+    });
+
+    it("can be called with the first argument as themselves", function () {
+        var A = aclass({
+            magic: function (inner1, inner2, foo) {
+                expect(inner2).toBe(innerMagic);
+
+                expect(foo).toBe("ABC");
+
+                return inner1(inner2, foo).length;
+            }
+        });
+
+        function innerMagic(inner, foo) {
+            expect(inner).toBe(innerMagic);
+
+            return String(foo);
+        }
+
+        var B = aclass(A, {
+            augment$magic: innerMagic
+        });
+
+        var b = B();
+
+        expect(b.magic(innerMagic, "ABC")).toBe(3);
+    });
+
+    it("can be passed as the first argument to another augmented method", function () {
+        var A = aclass({
+            magic: function (inner, foo) {
+                return inner(foo);
+            }
+        });
+
+        var B = aclass(A, {
+            augment$magic: function (foo) {
+                return foo;
+            }
+        });
+
+        var C = aclass({
+            magic: function (inner, foo) {
+                expect(B().magic(inner)).toBe(inner);
+
+                return inner(foo);
+            }
+        });
+
+        var D = aclass(C, {
+            augment$magic: function (foo) {
+                return foo;
+            }
+        });
+
+        D().magic(1);
+    });
+
+    it("can share a method from another class's prototype", function () {
+        var called = false;
+
+        var A = aclass({
+            magic: function (inner, foo) {
+                if (called) {
+                    return foo;
+                }
+                called = true;
+                return inner(foo).length;
+            }
+        });
+
+        var B = aclass(A, {
+            around$magic: function (supr, foo) {
+                return String(supr(B.prototype.magic, foo));
+            }
+        });
+
+        var C = aclass(A, {
+            augment$magic: B.prototype.magic
+        });
+
+        var c = C();
+
+        expect(c.magic(12345)).toBe(5);
+    });
+
+    it("retain the correct context when called again from within their outer method", function () {
+        var called = false;
+
+        var A = aclass({
+            init: function (inner, foo) {
+                if (called) {
+                    return null;
+                }
+                called = true;
+                B(67890);
+                inner(foo);
+            }
+        });
+
+        var B = aclass(A, {
+            augment$init: function (foo) {
+                this.value = String(foo);
+            }
+        });
+
+        var b = B(12345);
+
+        expect(b.value).toBe("12345");
+    });
+
+    it("do not have their internal stack conflict with other instances", function () {
+        var called = false;
+
+        var A = aclass({
+            init: function (inner, foo) {
+                if (called) {
+                    inner(foo);
+                } else {
+                    called = true;
+                    C(67890);
+                    inner(foo);
+                }
+            }
+        });
+
+        var B = aclass(A, {
+            augment$init: function (inner, foo) {
+                inner(foo);
             }
         });
 
         var C = aclass(B, {
-            around$method: function (supr, name) {
-                expect(name).toBe("A");
-
-                name = supr(name + "B");
-
-                expect(name).toBe("ABCDE");
-
-                return name + "F";
+            augment$init: function (foo) {
+                this.value = String(foo);
             }
         });
 
-        var c = new C();
+        var c = C(12345);
 
-        expect(c.method("A")).toBe("ABCDEF");
+        expect(c.value).toBe("12345");
+    });
+
+    it("do not have their internal stack conflict with other methods of the same instance", function () {
+        // Spys don't work, unfortunately.
+        var bMethod2Called = false,
+            cMethod2Called = false;
+
+        var A = aclass({
+            method1: function (inner, foo) {
+                return inner(this.method2(foo));
+            },
+
+            method2: function (inner, foo) {
+                return foo * 2;
+            }
+        });
+
+        var B = aclass(A, {
+            augment$method1: function (inner, foo) {
+                return inner(foo);
+            },
+
+            augment$method2: function (inner, foo) {
+                // This should never be called.
+                bMethod2Called = true;
+
+                return inner(foo);
+            }
+        });
+
+        var C = aclass(B, {
+            augment$method1: function (foo) {
+                return String(foo);
+            },
+
+            augment$method2: function (foo) {
+                // This should never be called.
+                cMethod2Called = true;
+
+                return String(foo);
+            }
+        });
+
+        var c = C();
+
+        expect(c.method1(12345)).toBe("24690");
+        expect(bMethod2Called).toBe(false);
+        expect(cMethod2Called).toBe(false);
+
+        expect(c.__stack__.length).toBe(0);
+    });
+
+    it("still behave if an instance calls inner() multiple times", function () {
+        var A = aclass({
+            init: function (inner, foo) {
+                inner(foo);
+                inner(foo);
+                inner(foo);
+            }
+        });
+
+        var B = aclass(A, {
+            augment$init: function (inner, foo) {
+                inner(foo);
+                inner(foo);
+                inner(foo);
+            }
+        });
+
+        var C = aclass(B, {
+            augment$init: function (foo) {
+                this.value = String(foo);
+            }
+        });
+
+        var c = C(12345);
+        expect(c.value).toBe("12345");
     });
 });
