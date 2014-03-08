@@ -124,12 +124,12 @@ describe("classes", function () {
         expect(a.foo).toBe(111);
         expect(a.bar).toBe(222);
 
-        var b = a.static("baz").around("noop").extend({ hi: 333 });
+        var b = a.extend({ baz: 333 }).around("noop").extend({ hi: 444 });
 
         expect(b).toBe(a);
-        expect(A.baz).not.toBeUndefined();
+        expect(a.baz).toBe(333);
         expect(a.noop).not.toBeUndefined();
-        expect(a.hi).toBe(333);
+        expect(a.hi).toBe(444);
     });
 
     it("can return a different object from their constructor", function () {
@@ -283,20 +283,6 @@ describe("method modifiers", function () {
         expect(a.inc()).toBe(2);
         expect(a.inc()).toBe(3);
         expect(a.three).toBe(true);
-    });
-
-    it("can define static methods", function () {
-        var A = aclass({
-            count: 0,
-
-            static$inc: function () {
-                this.count++;
-            }
-        });
-
-        A.inc();
-
-        expect(A.prototype.count).toBe(1);
     });
 });
 

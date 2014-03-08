@@ -182,10 +182,6 @@ document.body.appendChild(canvas);
 YieldSign(canvas).draw();
 ```
 
-#### Class.static(methodName, func)
-
-Declares a static method which is directly callable from ```Class[methodName]```. Within ```func```, ```this``` is bound to ```Class.prototype```.
-
 ### create your own™
 
 Custom method modifiers can be created, as described below.

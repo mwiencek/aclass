@@ -146,12 +146,6 @@
 
             augmented[innerProp] = true;
             return augmented;
-        },
-
-        static: function (owner, name, func) {
-            owner[constProp][name] = function () {
-                return func.apply(owner, arguments);
-            };
         }
     };
 
