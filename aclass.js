@@ -230,6 +230,8 @@
         return Class;
     }
 
+    aclass.methodOrDelegate = methodOrDelegate;
+
     aclass.methodModifier = function (modifierName, modifier) {
         methodModifiers[modifierName] = modifier;
 
