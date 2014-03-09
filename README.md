@@ -186,16 +186,16 @@ YieldSign(canvas).draw();
 
 Custom method modifiers can be created, as described below.
 
-#### aclass.methodModifier(name, func)
+#### aclass.methodModifier(name, callback)
 
 ```name``` is the name of the modifier.
 
-```func``` is a callback that receives two main parameters: the original function being modified* (if any), and the function that's replacing it (if any). It also receives the name of the method in question as the third parameter. Typically, ```func``` should return a new function that does something with these parameters, but you can be as creative as you want.
+```callback``` receives three parameters: the owner of the method being modified, the name of the method being modified, and the new function (or value) that was provided. Typically, ```callback``` should return a new function that does something with these parameters, but you can be as creative as you want.
 
-If you're using the $-syntax, the callback is the function you assign to the ```modifier$method``` property. For example:
+If you're using the $-syntax, the third parameter received is the function (or value) you assign to the ```modifier$method``` property. For example:
 
 ```JavaScript
-aclass.methodModifier("throttle", function (orig, func) {
+aclass.methodModifier("throttle", function (owner, name, func) {
     // underscore's throttle() function:
     // http://underscorejs.org/#throttle
     return _.throttle(func, 100);
@@ -211,10 +211,11 @@ var A = aclass({
 });
 ```
 
-Alternatively, you could implement it like this:
+Alternatively, you could implement it like this, if you’d prefer to throttle methods after-the-fact:
 
 ```JavaScript
-aclass.methodModifier("throttle", function (orig) {
+aclass.methodModifier("throttle", function (owner, name) {
+    var orig = aclass.methodOrDelegate(owner, name);
     return _.throttle(orig, 100);
 });
 
@@ -227,7 +228,11 @@ var A = aclass({
 A.throttle("updateSomething");
 ```
 
-\* If no function with the specified name exists directly on the target class or instance (e.g. "updateSomething"), then ```orig``` is a function that delegates the name lookup onto the parent prototype.
+In this case, ```A``` is the owner and ```updateSomething``` is the name of the method to modify on ```A```. The ```aclass.methodOrDelegate``` utility is described below.
+
+#### aclass.methodOrDelegate(owner, name)
+
+If ```name``` is an own property of ```owner``` (i.e., ```owner.hasOwnProperty(name)``` returns ```true```), then this simply returns ```owner[name]````. Otherwise, this returns a function that delegates to ```owner```’s super-class to look up ```name```. This allows you to “reference” a function that may not exist yet, or may exist but become modified later (possibly through a method modifier).
 
 ## license
 
