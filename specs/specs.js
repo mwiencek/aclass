@@ -1,96 +1,63 @@
 describe("classes", function () {
 
-    it("can be instantiated with a base class", function () {
+    it("are constructors", function () {
         var A = aclass();
-        var B = aclass(A);
+        var a = A();
 
-        var a = new A();
-        var b = new B();
-
+        expect(a.constructor).toBe(A);
         expect(a instanceof A).toBe(true);
-        expect(a instanceof B).toBe(false);
-        expect(b instanceof A).toBe(true);
-        expect(b instanceof B).toBe(true);
     });
 
-    it("can have properties added via extend()", function () {
+    it("can be inherited by other classes", function () {
         var A = aclass();
-
-        A.extend({
-            init: function (num) {
-                this.number = num;
-            },
-            setNumber: function (num) {
-                this.init(num);
-            }
-        });
-
-        var a = new A(1337);
-        expect(a.number).toBe(1337);
-
-        a.setNumber(0);
-        expect(a.number).toBe(0);
-
-        a.extend({
-            setNumber: function (num) {
-                this.__super__.setNumber.call(this, num * 2);
-            }
-        });
-
-        a.setNumber(668.5);
-        expect(a.number).toBe(1337);
-    });
-
-    it("can inherit properties from a BaseClass", function () {
-        var A = aclass({
-            property: { value: 577 },
-            method: function () {
-                return true;
-            }
-        });
-
         var B = aclass(A);
+        var b = B();
 
-        var a = new A();
-        var b = new B();
-
-        expect(a.property.value).toEqual(577);
-        expect(a.property).toBe(b.property);
-
-        expect(a.method()).toBe(true);
-        expect(a.method).toBe(b.method);
+        expect(b instanceof A).toBe(true);
     });
 
-    it("can override inherited methods", function () {
+    it("inherit the properties of their super class", function () {
+        var A = aclass({ foo: { foo: 123 } });
+        var B = aclass(A, { bar: { bar: 456 } });
+        var C = aclass(B);
+
+        var a = A();
+        var b = B();
+        var c = C();
+
+        expect(c.foo.foo).toEqual(123);
+        expect(c.foo).toBe(b.foo);
+        expect(b.foo).toBe(a.foo);
+    });
+
+    it("can be extended via extend()", function () {
+        var A = aclass().extend({ foo: 123 });
+
+        expect(A.prototype.foo).toBe(123);
+    });
+
+    it("can override methods inherited from a super class", function () {
         var A = aclass({
-            method: function () {
-                return true;
-            }
+            bar: function () { return true }
         });
 
         var B = aclass(A, {
-            method: function () {
-                return false;
-            }
+            bar: function () { return false }
         });
 
-        var a = new A();
-        var b = new B();
+        var a = A();
+        var b = B();
 
-        expect(a.method()).toBe(true);
-        expect(b.method()).toBe(false);
+        expect(a.bar()).toBe(true);
+        expect(b.bar()).toBe(false);
     });
 
-    it("can set properties via the class prototype", function () {
+    it("can have their prototypes modified after creation", function () {
         var A = aclass();
 
-        A.prototype.method = function () {
-            return true;
-        };
+        A.prototype.foo = 123;
 
-        var a = new A();
-
-        expect(a.method()).toBe(true);
+        expect(A().foo).toBe(123);
     });
 
     it("can be instantiated with a single init function", function () {
