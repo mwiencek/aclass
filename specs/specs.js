@@ -284,6 +284,18 @@ describe("method modifiers", function () {
         expect(a.inc()).toBe(3);
         expect(a.three).toBe(true);
     });
+
+    it("can return values other than functions", function () {
+        var fruits = { apple: 123, pear: 456, banana: 789 };
+
+        aclass.methodModifier("fruit", function (owner, name, value) {
+            return fruits[value];
+        });
+
+        var A = aclass({ fruit$favoriteFruitID: "apple" });
+
+        expect(A.prototype.favoriteFruitID).toBe(123);
+    });
 });
 
 

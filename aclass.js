@@ -151,27 +151,26 @@
 
     var baseProto = {
         extend: function (properties) {
-            for (var key in properties) {
+            var key, value, match, modifier, orig;
+
+            for (key in properties) {
                 if (this.hasOwnProperty(key)) {
                     continue;
                 }
-                var value = properties[key];
 
-                if (aFunction(value) && methodModifier.test(key)) {
-                    var match = key.match(methodModifier),
-                        modifier = methodModifiers[match[1]];
+                value = properties[key];
+                match = key.match(methodModifier);
 
+                if (match) {
+                    modifier = methodModifiers[match[1]];
                     key = match[2];
-                    var orig = properties[key];
+                    orig = properties[key];
 
                     if (orig !== undefined && !this.hasOwnProperty(key)) {
                         this[key] = orig;
                     }
-                    value = modifier(this, key, value);
 
-                    if (!aFunction(value)) {
-                        continue;
-                    }
+                    value = modifier(this, key, value);
                 }
                 this[key] = value;
             }
