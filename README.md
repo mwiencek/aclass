@@ -232,7 +232,7 @@ In this case, ```A``` is the owner and ```updateSomething``` is the name of the 
 
 #### aclass.methodOrDelegate(owner, name)
 
-If ```name``` is an own property of ```owner``` (i.e., ```owner.hasOwnProperty(name)``` returns ```true```), then this simply returns ```owner[name]````. Otherwise, this returns a function that delegates to ```owner```’s super-class to look up ```name```. This allows you to “reference” a function that may not exist yet, or may exist but become modified later (possibly through a method modifier).
+If ```name``` is an own property of ```owner``` (i.e., ```owner.hasOwnProperty(name)``` returns ```true```), then this simply returns ```owner[name]```. Otherwise, this returns a function that delegates to ```owner```’s super-class to look up ```name```. This allows you to “reference” a function that may not exist yet, or may exist but become modified later (possibly through a method modifier).
 
 ## license
 
