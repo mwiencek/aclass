@@ -1,4 +1,4 @@
-/* aclass 0.5.0
+/* aclass 0.5.1
  * https://github.com/mwiencek/aclass
  *
  * Copyright (C) 2014 Michael Wiencek <mwtuea@gmail.com>
