@@ -6,6 +6,7 @@
   "bugs": "https://github.com/mwiencek/aclass/issues",
   "license": "MIT",
   "author": "Michael Wiencek <mwiencek1@gmail.com>",
+  "main": "aclass.js",
   "repository" : {
     "type": "git",
     "url": "http://github.com/mwiencek/aclass.git"
