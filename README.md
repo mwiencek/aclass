@@ -1,5 +1,7 @@
 # aclass
 
+Note: This works great for what it does, but there's not much of a reason to use it in modern-day projects anymore. Better tools exist now, e.g. [Babel](https://babeljs.io/).
+
 A small but powerful wrapper over JavaScript's prototype system that eases the creation of classes.
 
 Supports IE6+, modern browsers, and AMD.
